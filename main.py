@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from pathlib import Path
@@ -21,23 +22,29 @@ git_installed = assets.check_git()
 if not git_installed:
     print("Git is not installed. Please install git to use the full potential of this script.")
 
-# try:
-#     os.chdir('IntelBluetoothFirmware')
-# except FileNotFoundError:
 
 if git_installed and not assets.check_dir("IntelBluetoothFirmware"):
-    clone_repos = input("IntelBluetoothFirmware not found in the script directory. Clone now? (y/n): ").lower().strip()
-    if clone_repos == "y":
-        assets.clone_repo(assets.intel_bluetooth_url)
-elif not git_installed and not assets.check_dir("IntelBluetoothFirmware"):
-    print("IntelBluetooth not found in the script directory. "
-          "Please clone the repository from {} and place it in {}".format(assets.intel_bluetooth_url, project_root))
-    sys.exit()
+    assets.download_src(ask_for_confirm=True)
 
-os.system('rm IntelBluetoothFirmware/FwBinary.cpp')
+
+os.chdir("IntelBluetoothFirmware")
+# Change directory to the IntelBluetoothFirmware project root
+
+
+try:
+    os.remove('IntelBluetoothFirmware/FwBinary.cpp')
+except FileNotFoundError:
+    pass
+
 firmwares = [fw[:-4] for fw in os.listdir('IntelBluetoothFirmware/fw') if not fw.endswith('.ddc')]
+with open("firmwares.json", "w") as f:
+    json.dump(firmwares, f)
 
-os.system('mkdir ../Kexts')
+try:
+    os.mkdir('../Kexts')
+except FileExistsError:
+    pass
+
 for firmware in firmwares:
     os.system(f'find IntelBluetoothFirmware/fw -type f -not -name "{firmware}.*" -delete')
     os.system('xcodebuild -project IntelBluetoothFirmware.xcodeproj -target fw_gen -configuration Release -sdk macosx')
